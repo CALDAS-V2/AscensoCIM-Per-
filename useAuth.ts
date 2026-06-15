@@ -1,41 +1,125 @@
 import { useState, useEffect } from 'react'
-import { supabase } from './supabase'
-import type { User } from '@supabase/supabase-js'
+
+export interface User {
+  id: string
+  email: string
+  name?: string
+  nombres?: string
+  apellidoPaterno?: string
+  apellidoMaterno?: string
+  cip?: string
+  status: 'pending' | 'approved' | 'suspended' | 'locked'
+  roleId?: string
+  role?: string
+  lastLogin?: string
+  loginAttempts: number
+  lockedUntil?: string
+  createdAt: string
+  updatedAt: string
+}
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
-    // Obtener la sesión actual
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    }).catch(err => {
-      setError(err.message)
-      setLoading(false)
-    })
+    const verifyToken = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          setIsLoading(false)
+          return
+        }
 
-    // Escuchar cambios de autenticación
-    const {
-      data: { subscription }
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
+        const apiUrl = typeof window !== 'undefined' && (window as any).import?.meta?.env?.VITE_API_URL
+          ? (window as any).import.meta.env.VITE_API_URL
+          : 'http://localhost:3001'
+        const response = await fetch(`${apiUrl}/api/auth/verify`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
 
-    return () => subscription.unsubscribe()
+        if (response.ok) {
+          const data = await response.json()
+          setUser(data.user)
+          setIsAuthenticated(true)
+        } else {
+          localStorage.removeItem('authToken')
+        }
+      } catch (error) {
+        console.error('Error verificando token:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    verifyToken()
   }, [])
 
-  const logout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
-      setUser(null)
-    } catch (err: any) {
-      setError(err.message)
+  const login = async (email: string, password: string) => {
+    const apiUrl = typeof window !== 'undefined' && (window as any).import?.meta?.env?.VITE_API_URL
+      ? (window as any).import.meta.env.VITE_API_URL
+      : 'http://localhost:3001'
+    const response = await fetch(`${apiUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Error al iniciar sesión')
     }
+
+    const data = await response.json()
+    localStorage.setItem('token', data.token)
+    setUser(data.user)
+    setIsAuthenticated(true)
+    return data
   }
 
-  return { user, loading, error, logout }
+  const register = async (email: string, password: string, metadata: any) => {
+    const apiUrl = typeof window !== 'undefined' && (window as any).import?.meta?.env?.VITE_API_URL
+      ? (window as any).import.meta.env.VITE_API_URL
+      : 'http://localhost:3001'
+    const response = await fetch(`${apiUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password,
+        ...metadata
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Error al registrarse')
+    }
+
+    const data = await response.json()
+    localStorage.setItem('token', data.token)
+    setUser(data.user)
+    setIsAuthenticated(true)
+    return data
+  }
+
+  const logout = () => {
+    localStorage.removeItem('token')
+    setUser(null)
+    setIsAuthenticated(false)
+  }
+
+  return {
+    user,
+    isLoading,
+    isAuthenticated,
+    login,
+    register,
+    logout
+  }
 }
