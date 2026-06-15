@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ESNext",
+    "module": "CommonJS",
     "moduleResolution": "node",
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
@@ -14,6 +14,6 @@
     "skipDefaultLibCheck": true,
     "ignoreDeprecations": "6.0"
   },
-  "include": ["src/server.ts", "src/lib/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/**/*.tsx", "src/pages", "src/lib/blink.ts", "src/lib/supabase.ts", "src/lib/useAuth.ts"]
+  "include": ["server.ts", "authRoutes.ts", "authRoutesV2.ts", "mailer.ts", "middleware.ts", "password.ts", "passwordReset.ts", "rateLimiter.ts", "security.ts", "validation.ts"],
+  "exclude": ["node_modules", "dist", "*.tsx", "blink.ts", "supabase.ts", "useAuth.ts"]
 }
